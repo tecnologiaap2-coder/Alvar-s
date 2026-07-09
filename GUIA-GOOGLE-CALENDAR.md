@@ -62,10 +62,10 @@ As Contas de Serviço permitem que o backend (Supabase Edge Functions) se conect
 Por padrão, a conta de serviço só tem acesso aos seus próprios calendários. Para que ela possa ler e gravar na agenda do escritório (ex: `felipe@arosopontinadvogados.com.br` ou `escritorio@...`), você deve compartilhar a agenda com ela.
 
 1. Abra o **[Google Agenda](https://calendar.google.com/)** logado no e-mail do escritório que receberá os eventos.
-2. No menu esquerdo, localize a agenda principal (abaixo de "Minhas agendas").
+2. No menu esquerdo, localize a agenda principal (abaixo de "Minhas agendas"  ).
 3. Clique nos três pontinhos ao lado da agenda e selecione **Configurações e compartilhamento**.
 4. Vá até a seção **Compartilhar com pessoas ou grupos específicos** e clique em **`+ Adicionar pessoas e grupos`**.
-5. No campo de e-mail, cole o endereço da Conta de Serviço criado no Passo 1 (ex: `calendar-service-account@NOME-DO-PROJETO.iam.gserviceaccount.com`).
+5. No campo de e-mail, cole o endereço da Conta de Serviço criado no Passo 1 (ex:`calendar-service-account@NOME-DO-PROJETO.iam.gserviceaccount.com`).
 6. Na opção de Permissões, selecione obrigatoriamente **Fazer alterações e gerenciar compartilhamento** (ou no mínimo **Fazer alterações em eventos**).
 7. Clique em **Enviar**.
 

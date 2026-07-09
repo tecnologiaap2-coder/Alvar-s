@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from './useToast';
+import { parseBRL } from '../utils/formatters';
 
 // Mapeamento de Banco de Dados (snake_case) para Frontend (camelCase)
 export const mapDBToFrontend = (db) => {
@@ -77,8 +78,8 @@ export const mapFrontendToDB = (fe) => {
     sistema: fe.sistema || null,
     link_processo: fe.linkProcesso || null,
     tipo_credito: fe.tipoCredito,
-    valor_previsto: fe.valorPrevisto ? parseFloat(String(fe.valorPrevisto).replace(',', '.')) : 0,
-    valor_recebido: fe.valorRecebido ? parseFloat(String(fe.valorRecebido).replace(',', '.')) : 0,
+    valor_previsto: parseBRL(fe.valorPrevisto),
+    valor_recebido: parseBRL(fe.valorRecebido),
     situacao_alvara: fe.situacaoAlvara,
     ultima_movimentacao: fe.ultimaMovimentacao || null,
     data_ultima_movimentacao: fe.dataUltimaMovimentacao,
