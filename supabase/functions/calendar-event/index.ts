@@ -135,12 +135,18 @@ serve(async (req) => {
       const results = [];
       for (const calendarId of calendarIds) {
         try {
-          const isWorkspaceUser = !calendarId.endsWith("@gmail.com") && calendarId.includes("@");
-          const accessToken = await getAccessToken(
-            creds.client_email,
-            creds.private_key,
-            isWorkspaceUser ? calendarId : undefined
-          );
+          let accessToken;
+          try {
+            const isWorkspaceUser = !calendarId.endsWith("@gmail.com") && calendarId.includes("@");
+            accessToken = await getAccessToken(
+              creds.client_email,
+              creds.private_key,
+              isWorkspaceUser ? calendarId : undefined
+            );
+          } catch (tokenErr) {
+            console.warn(`[Upsert] Delegação de domínio falhou para ${calendarId}. Tentando acesso direto:`, tokenErr);
+            accessToken = await getAccessToken(creds.client_email, creds.private_key);
+          }
 
           const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
             method: "POST",
@@ -179,12 +185,18 @@ serve(async (req) => {
 
       for (const calendarId of calendarIds) {
         try {
-          const isWorkspaceUser = !calendarId.endsWith("@gmail.com") && calendarId.includes("@");
-          const accessToken = await getAccessToken(
-            creds.client_email,
-            creds.private_key,
-            isWorkspaceUser ? calendarId : undefined
-          );
+          let accessToken;
+          try {
+            const isWorkspaceUser = !calendarId.endsWith("@gmail.com") && calendarId.includes("@");
+            accessToken = await getAccessToken(
+              creds.client_email,
+              creds.private_key,
+              isWorkspaceUser ? calendarId : undefined
+            );
+          } catch (tokenErr) {
+            console.warn(`[Delete] Delegação de domínio falhou para ${calendarId}. Tentando acesso direto:`, tokenErr);
+            accessToken = await getAccessToken(creds.client_email, creds.private_key);
+          }
 
           // Busca eventos existentes que correspondam ao termo/query
           const searchRes = await fetch(
