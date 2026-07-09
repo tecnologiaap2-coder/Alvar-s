@@ -112,7 +112,8 @@ serve(async (req) => {
     const creds = JSON.parse(credsStr);
     const accessToken = await getAccessToken(creds.client_email, creds.private_key);
 
-    const calendarId = Deno.env.get("CALENDAR_ID") || Deno.env.get("GMAIL_USER") || "primary";
+    const calendarIdSecret = Deno.env.get("CALENDAR_ID") || Deno.env.get("GMAIL_USER") || "primary";
+    const calendarIds = calendarIdSecret.split(",").map(id => id.trim()).filter(Boolean);
 
     if (action === "upsert") {
       // Cria um evento no Google Calendar
@@ -127,52 +128,80 @@ serve(async (req) => {
         },
       };
 
-      const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(event),
-      });
+      const results = [];
+      for (const calendarId of calendarIds) {
+        try {
+          const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(event),
+          });
 
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error?.message || "Erro ao criar evento");
+          const resData = await res.json();
+          if (res.ok) {
+            results.push({ calendarId, eventId: resData.id, success: true });
+          } else {
+            results.push({ calendarId, error: resData.error?.message || "Erro ao criar evento", success: false });
+          }
+        } catch (e: any) {
+          results.push({ calendarId, error: e.message, success: false });
+        }
+      }
 
-      return new Response(JSON.stringify({ success: true, eventId: resData.id }), {
+      // Se todas as agendas falharem, lançamos um erro descritivo
+      const anySuccess = results.some(r => r.success);
+      if (!anySuccess) {
+        throw new Error("Falha ao registrar evento em todas as agendas configuradas: " + JSON.stringify(results));
+      }
+
+      return new Response(JSON.stringify({ success: true, results }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
 
     } else if (action === "delete") {
-      // Busca eventos existentes que correspondam ao termo/query
-      const searchRes = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?q=${encodeURIComponent(query)}`,
-        {
-          headers: { "Authorization": `Bearer ${accessToken}` },
-        }
-      );
+      let totalDeleted = 0;
+      const deleteResults = [];
 
-      const searchData = await searchRes.json();
-      if (!searchRes.ok) throw new Error(searchData.error?.message || "Erro ao buscar eventos");
-
-      const items = searchData.items || [];
-      let count = 0;
-
-      for (const item of items) {
-        if (item.id) {
-          const delRes = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${item.id}`,
+      for (const calendarId of calendarIds) {
+        try {
+          // Busca eventos existentes que correspondam ao termo/query
+          const searchRes = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?q=${encodeURIComponent(query)}`,
             {
-              method: "DELETE",
               headers: { "Authorization": `Bearer ${accessToken}` },
             }
           );
-          if (delRes.ok) count++;
+
+          const searchData = await searchRes.json();
+          if (!searchRes.ok) throw new Error(searchData.error?.message || "Erro ao buscar eventos");
+
+          const items = searchData.items || [];
+          let count = 0;
+
+          for (const item of items) {
+            if (item.id) {
+              const delRes = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${item.id}`,
+                {
+                  method: "DELETE",
+                  headers: { "Authorization": `Bearer ${accessToken}` },
+                }
+              );
+              if (delRes.ok) count++;
+            }
+          }
+          totalDeleted += count;
+          deleteResults.push({ calendarId, deletedCount: count, success: true });
+        } catch (e: any) {
+          deleteResults.push({ calendarId, error: e.message, success: false });
         }
       }
 
-      return new Response(JSON.stringify({ success: true, deletedCount: count }), {
+      return new Response(JSON.stringify({ success: true, totalDeleted, results: deleteResults }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
