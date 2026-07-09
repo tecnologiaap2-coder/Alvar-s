@@ -49,17 +49,22 @@ function base64url(source: ArrayBuffer | string): string {
     .replace(/=+$/, "");
 }
 
-async function getAccessToken(clientEmail: string, privateKeyPem: string): Promise<string> {
+async function getAccessToken(clientEmail: string, privateKeyPem: string, sub?: string): Promise<string> {
   const header = JSON.stringify({ alg: "RS256", typ: "JWT" });
   const now = Math.floor(Date.now() / 1000);
-  const claim = JSON.stringify({
+  const claimData: any = {
     iss: clientEmail,
     scope: "https://www.googleapis.com/auth/calendar",
     aud: "https://oauth2.googleapis.com/token",
     exp: now + 3600,
     iat: now
-  });
+  };
 
+  if (sub) {
+    claimData.sub = sub;
+  }
+
+  const claim = JSON.stringify(claimData);
   const tokenInput = `${base64url(header)}.${base64url(claim)}`;
   const key = await importPrivateKey(privateKeyPem);
   const signature = await crypto.subtle.sign(
@@ -110,7 +115,6 @@ serve(async (req) => {
 
     // Modo de Integração Real
     const creds = JSON.parse(credsStr);
-    const accessToken = await getAccessToken(creds.client_email, creds.private_key);
 
     const calendarIdSecret = Deno.env.get("CALENDAR_ID") || Deno.env.get("GMAIL_USER") || "primary";
     const calendarIds = calendarIdSecret.split(",").map(id => id.trim()).filter(Boolean);
@@ -131,6 +135,13 @@ serve(async (req) => {
       const results = [];
       for (const calendarId of calendarIds) {
         try {
+          const isWorkspaceUser = !calendarId.endsWith("@gmail.com") && calendarId.includes("@");
+          const accessToken = await getAccessToken(
+            creds.client_email,
+            creds.private_key,
+            isWorkspaceUser ? calendarId : undefined
+          );
+
           const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events`, {
             method: "POST",
             headers: {
@@ -168,6 +179,13 @@ serve(async (req) => {
 
       for (const calendarId of calendarIds) {
         try {
+          const isWorkspaceUser = !calendarId.endsWith("@gmail.com") && calendarId.includes("@");
+          const accessToken = await getAccessToken(
+            creds.client_email,
+            creds.private_key,
+            isWorkspaceUser ? calendarId : undefined
+          );
+
           // Busca eventos existentes que correspondam ao termo/query
           const searchRes = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?q=${encodeURIComponent(query)}`,
