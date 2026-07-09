@@ -112,7 +112,7 @@ serve(async (req) => {
     const creds = JSON.parse(credsStr);
     const accessToken = await getAccessToken(creds.client_email, creds.private_key);
 
-    const calendarId = Deno.env.get("GMAIL_USER") || "primary";
+    const calendarId = Deno.env.get("CALENDAR_ID") || Deno.env.get("GMAIL_USER") || "primary";
 
     if (action === "upsert") {
       // Cria um evento no Google Calendar
