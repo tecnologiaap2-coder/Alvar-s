@@ -210,6 +210,20 @@ export const useProcessos = (user) => {
     }
   };
 
+  const obterProcessoCompleto = async (id) => {
+    const { data, error } = await supabase
+      .from('processos')
+      .select(`
+        *,
+        historico_contatos(*),
+        historico_renovacoes(*)
+      `)
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return mapDBToFrontend(data);
+  };
+
   // Adicionar Histórico de Contato
   const registrarContatoDB = async (processoId, historicoData) => {
     try {
@@ -224,10 +238,9 @@ export const useProcessos = (user) => {
         nova_data: historicoData.novaData || null
       };
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('historico_contatos')
-        .insert(payload)
-        .select();
+        .insert(payload);
 
       if (error) throw error;
 
@@ -240,7 +253,8 @@ export const useProcessos = (user) => {
       };
 
       if (historicoData.novaData) {
-        updates.data_nova_analise = historicoData.novaData;
+        updates.data_prevista_deposito = historicoData.novaData;
+        updates.alerta_deposito_enviado = false;
       }
 
       const { error: updateError } = await supabase
@@ -250,7 +264,7 @@ export const useProcessos = (user) => {
 
       if (updateError) throw updateError;
       showToast('Contato registrado com sucesso!');
-      return data[0];
+      return await obterProcessoCompleto(processoId);
     } catch (e) {
       console.error(e);
       showToast('Erro ao registrar contato: ' + e.message, 'error');
@@ -269,10 +283,9 @@ export const useProcessos = (user) => {
         responsavel: renovacaoData.responsavel
       };
 
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('historico_renovacoes')
-        .insert(payload)
-        .select();
+        .insert(payload);
 
       if (error) throw error;
 
@@ -288,7 +301,7 @@ export const useProcessos = (user) => {
 
       if (updateError) throw updateError;
       showToast('Renovação de depósito registrada!');
-      return data[0];
+      return await obterProcessoCompleto(processoId);
     } catch (e) {
       console.error(e);
       showToast('Erro ao registrar renovação: ' + e.message, 'error');
@@ -299,7 +312,7 @@ export const useProcessos = (user) => {
   // Confirmar Depósito/Pagamento
   const confirmarDepositoDB = async (processo) => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('processos')
         .update({
           deposito_confirmado: true,
@@ -307,12 +320,11 @@ export const useProcessos = (user) => {
           status_final: 'Pago',
           valor_recebido: processo.valorPrevisto
         })
-        .eq('id', processo.id)
-        .select();
+        .eq('id', processo.id);
 
       if (error) throw error;
       showToast('Depósito confirmado com sucesso!');
-      return mapDBToFrontend(data[0]);
+      return await obterProcessoCompleto(processo.id);
     } catch (e) {
       console.error(e);
       showToast('Erro ao confirmar depósito: ' + e.message, 'error');

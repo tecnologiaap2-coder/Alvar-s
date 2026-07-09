@@ -187,14 +187,10 @@ Arôso & Pontin Advogados Associados — São Luís/MA`;
     if (!modalRenovacao) return;
     try {
       const salvo = await registrarRenovacaoDB(modalRenovacao.id, modalRenovacao.dataPrevistaDeposito, formRenovacao);
-      // Recarrega o objeto processo atualizado com o histórico de renovações
-      const { data } = await useProcessos.carregarProcessos; // trigger automático por realtime
       setModalRenovacao(null);
-      
-      const procAtualizado = processos.find(p => p.id === modalRenovacao.id);
-      if (procAtualizado) {
-        setProcessoDetalhe(procAtualizado);
-        await dispararProtocolo(procAtualizado, 'NOVA DATA DE DEPÓSITO');
+      if (salvo) {
+        setProcessoDetalhe(salvo);
+        await dispararProtocolo(salvo, 'NOVA DATA DE DEPÓSITO');
       }
     } catch (e) {
       console.error(e);
@@ -204,13 +200,11 @@ Arôso & Pontin Advogados Associados — São Luís/MA`;
   const handleAdicionarHistorico = async (formContato) => {
     if (!modalHistorico) return;
     try {
-      await registrarContatoDB(modalHistorico.id, formContato);
+      const salvo = await registrarContatoDB(modalHistorico.id, formContato);
       setModalHistorico(null);
-      
-      const procAtualizado = processos.find(p => p.id === modalHistorico.id);
-      if (procAtualizado) {
-        setProcessoDetalhe(procAtualizado);
-        await dispararProtocolo(procAtualizado, 'CONTATO REGISTRADO');
+      if (salvo) {
+        setProcessoDetalhe(salvo);
+        await dispararProtocolo(salvo, 'CONTATO REGISTRADO');
       }
     } catch (e) {
       console.error(e);
